@@ -1,1 +1,341 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Voucher Regalo • Óptica Cristal</title>
+<link rel="icon" href="img/logo_muy_chico_sinfondo.png" />
+<style>
+  :root{
+    --bg:#0b1220; --card:#121a2b; --text:#e8eefc; --muted:#9fb0d6; --accent:#7cc0ff;
+    --ok:#10b981; --warn:#f59e0b; --err:#ef4444;
+  }
+  *{box-sizing:border-box}
+  body{margin:0; font:15px/1.45 system-ui,Segoe UI,Roboto,Arial,sans-serif; background:var(--bg); color:var(--text)}
+  .wrap{max-width:980px; margin:24px auto; padding:16px}
+  .grid{display:grid; grid-template-columns: 1fr 1fr; gap:16px}
+  .card{background:var(--card); border:1px solid #1e2a42; border-radius:14px; padding:16px; box-shadow:0 8px 28px rgba(0,0,0,.28)}
+  h1{margin:0 0 10px; font-size:22px}
+  label{display:block; font-weight:600; margin:8px 0 4px}
+  input, select{width:100%; padding:10px 12px; border:1px solid #1e2a42; border-radius:10px; background:#0f172a; color:var(--text)}
+  .row{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+  button{cursor:pointer; padding:10px 14px; border-radius:10px; border:1px solid #1e2a42; background:#111827; color:#fff}
+  button.primary{background:#0ea5e9; border-color:#0ea5e9; color:#031018; font-weight:700}
+  button.ghost{background:transparent}
+  .btns{display:flex; gap:10px; flex-wrap:wrap; margin-top:12px}
+  .small{font-size:13px; color:var(--muted)}
+  .ok{color:var(--ok)} .warn{color:var(--warn)} .err{color:var(--err)}
+  .result{white-space:pre-wrap; background:#0f172a; border:1px solid #1e2a42; border-radius:10px; padding:10px; margin-top:10px}
+  .scanbox{aspect-ratio: 1.6/1; border:1px dashed #2b3a5c; border-radius:12px; display:grid; place-items:center; color:#9fb0d6}
+  .muted{color:var(--muted)}
+  .flex{display:flex; align-items:center; gap:10px}
+  .code{font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; background:#0b1328; border:1px solid #1f2b49; padding:2px 6px; border-radius:6px}
+  @media (max-width:900px){ .grid{grid-template-columns:1fr} }
+</style>
+<!-- JsBarcode para generar el código de barras -->
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+<!-- html5-qrcode para escanear con la cámara -->
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Voucher Regalo – Óptica Cristal</h1>
+    <div class="grid">
+      <!-- FORM -->
+      <div class="card">
+        <div class="row">
+          <div>
+            <label>Nombre</label>
+            <input id="nombre" autocomplete="off" />
+          </div>
+          <div>
+            <label>Apellido</label>
+            <input id="apellido" autocomplete="off" />
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <label>Importe (ARS)</label>
+            <input id="importe" type="number" step="0.01" min="0" placeholder="0.00" />
+          </div>
+          <div>
+            <label>Forma de pago</label>
+            <select id="pago">
+              <option value="">Elegí opción</option>
+              <option>Efectivo</option>
+              <option>Débito</option>
+              <option>Crédito 1 cuota</option>
+              <option>Crédito 3 cuotas</option>
+              <option>Transferencia</option>
+              <option>Otra</option>
+            </select>
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <label>Día de compra</label>
+            <input id="fecha" type="date" />
+          </div>
+          <div>
+            <label>Observación (opcional)</label>
+            <input id="obs" placeholder="ej. solo armazón / promo / etc." />
+          </div>
+        </div>
+        <div class="btns">
+          <button class="primary" id="btnGuardarImprimir">Guardar & Imprimir</button>
+          <button class="ghost" id="btnUltimo">Reimprimir último</button>
+          <button id="btnEscanear">Escanear voucher</button>
+          <span class="small">La info se guarda localmente en este dispositivo.</span>
+        </div>
+        <div id="msg" class="small" style="margin-top:8px"></div>
+      </div>
 
+      <!-- SCAN / RESULT -->
+      <div class="card">
+        <div class="flex" style="justify-content:space-between">
+          <div class="flex">
+            <strong>Consulta por código</strong>
+            <input id="manualCode" placeholder="pegar/teclear código" style="width:220px" />
+            <button id="btnBuscar">Buscar</button>
+          </div>
+          <div>
+            <button id="btnToggleCam">Activar cámara</button>
+          </div>
+        </div>
+        <div id="scanArea" class="scanbox" style="margin-top:10px">
+          <span class="muted">Cámara apagada</span>
+        </div>
+        <div id="info" class="result" style="display:none"></div>
+      </div>
+    </div>
+  </div>
+
+<script>
+/* ====== CONFIG ====== */
+const VOUCHER_IMG = "img/giftcard.jpg";  // Cambiar ruta si querés
+const PRINT_W_MM = 150;   // 15 cm ancho
+const PRINT_H_MM = 100;   // 10 cm alto
+
+/* ====== STORAGE (local first) ====== */
+function loadDB(){ try{ return JSON.parse(localStorage.getItem("oc_vouchers")||"{}"); }catch(e){ return {}; } }
+function saveDB(db){ localStorage.setItem("oc_vouchers", JSON.stringify(db)); }
+function putVoucher(id, data){ const db = loadDB(); db[id]=data; saveDB(db); }
+function getVoucher(id){ return loadDB()[id]; }
+function setLast(id){ localStorage.setItem("oc_last_voucher", id); }
+function getLast(){ return localStorage.getItem("oc_last_voucher"); }
+
+/* ====== ID ====== */
+function pad(n){return n<10?"0"+n:n}
+function newId(){
+  const d=new Date();
+  const id = `OCV-${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}-${d.getHours()}${pad(d.getMinutes())}${d.getSeconds()}-${Math.random().toString(36).slice(2,7).toUpperCase()}`;
+  return id;
+}
+
+/* ====== BARCODE SVG ====== */
+function makeBarcodeSVG(id, options={}){
+  const svg = document.createElementNS("http://www.w3.org/2000/svg","svg");
+  svg.setAttribute("xmlns","http://www.w3.org/2000/svg");
+  // tamaño “horizontal” antes de rotar
+  const w = options.w || 1200;   // px
+  const h = options.h || 220;    // px
+  svg.setAttribute("width", w); svg.setAttribute("height", h);
+  JsBarcode(svg, id, {
+    format:"CODE128",
+    displayValue:false,
+    margin:0,
+    lineColor:"#000",
+    height:h*0.78
+  });
+  return svg;
+}
+
+/* ====== PRINT (iframe oculto, tamaño exacto en mm) ====== */
+function printVoucher({id}){
+  return new Promise((resolve)=>{
+    const iframe = document.createElement("iframe");
+    iframe.style.position="fixed"; iframe.style.right="0"; iframe.style.bottom="0";
+    iframe.style.width="0"; iframe.style.height="0"; iframe.style.border="0";
+    document.body.appendChild(iframe);
+
+    const doc = iframe.contentDocument;
+    doc.open();
+    doc.write(`<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>Imprimir voucher</title>
+<style>
+  @page{ size: ${PRINT_W_MM}mm ${PRINT_H_MM}mm; margin:0; }
+  html,body{ height:100%; margin:0; }
+  .sheet{
+    width:${PRINT_W_MM}mm; height:${PRINT_H_MM}mm;
+    position:relative; overflow:hidden;
+    background: #fff url('${VOUCHER_IMG}') no-repeat center center / cover;
+  }
+  .barcodeWrap{
+    position:absolute; right:6mm; top:50%;
+    transform: translateY(-50%) rotate(90deg); /* vertical en el costado derecho */
+    transform-origin:center;
+    width:60mm; height:18mm; /* tamaño del código (antes de rotar) */
+    display:flex; align-items:center; justify-content:center;
+    background:transparent;
+  }
+  svg{ width:100%; height:100%; }
+</style>
+</head>
+<body>
+  <div class="sheet">
+    <div class="barcodeWrap" id="barea"></div>
+  </div>
+  <script>
+    // Esta parte se completa desde el padre
+  <\/script>
+</body>
+</html>`);
+    doc.close();
+
+    // Inyectar el SVG del código
+    const svg = makeBarcodeSVG(id, {w:1200, h:220});
+    doc.getElementById("barea").appendChild(svg);
+
+    // Espera breve y dispara impresión
+    setTimeout(()=>{
+      iframe.contentWindow.focus();
+      iframe.contentWindow.print();
+      setTimeout(()=>{ iframe.remove(); resolve(); }, 400);
+    }, 300);
+  });
+}
+
+/* ====== FORM HANDLERS ====== */
+const $ = (id)=>document.getElementById(id);
+const msg = (t, cls="")=>{ const el=$("msg"); el.textContent=t; el.className="small "+cls; }
+
+$("btnGuardarImprimir").addEventListener("click", async ()=>{
+  const nombre   = $("nombre").value.trim();
+  const apellido = $("apellido").value.trim();
+  const importe  = Number($("importe").value || 0);
+  const pago     = $("pago").value.trim();
+  const fecha    = $("fecha").value;
+  const obs      = $("obs").value.trim();
+
+  if(!nombre || !apellido || !pago || !fecha){
+    msg("Completá nombre, apellido, forma de pago y fecha.", "warn"); return;
+  }
+  const id = newId();
+  const data = { id, ts:Date.now(), nombre, apellido, importe, pago, fecha, obs };
+
+  // 1) Guardar local
+  putVoucher(id, data);
+  setLast(id);
+
+  // 2) (Opcional) Guardar también en tu Apps Script (descomentar y poner URL)
+  /*
+  const APPS_SCRIPT_URL = "https://script.google.com/macros/s/XXXXXXXX/exec";
+  try{
+    await fetch(APPS_SCRIPT_URL, {
+      method:"POST",
+      headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify({ action:"saveVoucher", payload:data })
+    });
+  }catch(e){ console.warn("Apps Script no disponible:", e); }
+  */
+
+  msg(`Guardado ✓  Código: ${id}`, "ok");
+  await printVoucher({id});
+});
+
+$("btnUltimo").addEventListener("click", ()=>{
+  const id = getLast();
+  if(!id){ msg("No hay último voucher para reimprimir.", "warn"); return; }
+  printVoucher({id});
+});
+
+/* ====== BUSCAR MANUAL ====== */
+$("btnBuscar").addEventListener("click", ()=>{
+  const code = $("manualCode").value.trim();
+  if(!code){ return; }
+  showData(code);
+});
+
+/* ====== ESCANEO CON CÁMARA ====== */
+let camOn = false, qr;
+async function toggleCam(){
+  if(camOn){
+    await qr?.stop(); qr?.clear(); camOn=false;
+    $("scanArea").innerHTML = '<span class="muted">Cámara apagada</span>';
+    $("btnToggleCam").textContent="Activar cámara";
+    return;
+  }
+  // Preparar área
+  $("scanArea").innerHTML = '<div id="reader" style="width:100%; height:100%"></div>';
+  qr = new Html5Qrcode("reader");
+  camOn=true; $("btnToggleCam").textContent="Apagar cámara";
+
+  const onScan = (decodedText)=>{
+    if(decodedText){ showData(decodedText); }
+  };
+  const config = { fps: 10, qrbox: { width: 250, height: 150 }, formatsToSupport: [ Html5QrcodeSupportedFormats.CODE_128 ] };
+  try{
+    await qr.start({ facingMode: "environment" }, config, onScan);
+  }catch(e){
+    $("scanArea").innerHTML = '<span class="muted">No se pudo iniciar la cámara.</span>';
+    camOn=false; $("btnToggleCam").textContent="Activar cámara";
+  }
+}
+$("btnEscanear").addEventListener("click", toggleCam);
+$("btnToggleCam").addEventListener("click", toggleCam);
+
+/* ====== MOSTRAR DATOS ====== */
+function fmtMoney(n){ return new Intl.NumberFormat("es-AR",{style:"currency",currency:"ARS",minimumFractionDigits:2}).format(n||0); }
+function showData(id){
+  // 1) Local
+  let data = getVoucher(id);
+
+  // 2) (Opcional) Pedir a Apps Script si no está local
+  /*
+  if(!data){
+    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/XXXXXXXX/exec";
+    fetch(`${APPS_SCRIPT_URL}?action=getVoucher&id=${encodeURIComponent(id)}`)
+      .then(r=>r.ok?r.json():null)
+      .then(json=>{
+        if(json && json.ok){ renderData(json.data); }
+        else renderNotFound(id);
+      })
+      .catch(()=>renderNotFound(id));
+    return;
+  }
+  */
+
+  if(data){ renderData(data); }
+  else { renderNotFound(id); }
+}
+
+function renderData(d){
+  const el = $("info");
+  el.style.display="block";
+  el.innerHTML =
+`Código: <span class="code">${d.id}</span>
+Fecha compra: ${d.fecha}
+Cliente: ${d.apellido.toUpperCase()}, ${d.nombre.toUpperCase()}
+Importe: ${fmtMoney(d.importe)}
+Forma de pago: ${d.pago}
+Obs: ${d.obs || "-"}
+Guardado: ${new Date(d.ts).toLocaleString("es-AR")}`;
+  msg(`Encontrado ${d.id}`, "ok");
+}
+function renderNotFound(id){
+  const el = $("info");
+  el.style.display="block";
+  el.innerHTML = `No se encontró info para el código: <span class="code">${id}</span>`;
+  msg("Sin resultados en este dispositivo.", "err");
+}
+
+/* ====== UX ====== */
+document.addEventListener("keydown", (e)=>{
+  if(e.key==="Enter" && (document.activeElement.id==="manualCode")) $("btnBuscar").click();
+});
+</script>
+</body>
+</html>
