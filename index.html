@@ -36,7 +36,7 @@
 </head>
 <body>
   <div class="wrap">
-    <h1>Voucher Regalo – Óptica Cristal v3</h1>
+    <h1>Voucher Regalo – Óptica Cristal v4 </h1>
     <div class="grid">
       <!-- FORM -->
       <div class="card">
@@ -109,7 +109,7 @@
 
 <script>
 /* ====== CONFIG ====== */
-const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzSb4rNdp1I83DGgPxP0EGjKCkTlAvAj0DnhtRC67ii5-79HY990hAWfew7XhJ7ZTcT/exec";
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx47dayEhtFmx3WFT6-mZffcoMV5F6zCsKM1QtbdFWYj2SuHgyk53Kl0YchJFhn9ZcA/exec";
 const VOUCHER_IMG     = "img/giftcard.jpg";  // asegurate que exista
 const PRINT_W_MM = 150;  // 15 cm
 const PRINT_H_MM = 100;  // 10 cm
@@ -216,15 +216,20 @@ $("btnGuardarImprimir").addEventListener("click", async ()=>{
 
   // Guardar en Google Sheets (sin CORS)
   try{
-    const payload = { action:"saveVoucher", payload:data };
-    const res = await fetch(APPS_SCRIPT_URL, {
-      method: "POST",
-      headers: { "Content-Type": "text/plain;charset=utf-8" },
-      body: JSON.stringify(payload)
-    });
+  const body = { action:"saveVoucher", payload:data };
+  const params = new URLSearchParams();
+  params.set('data', JSON.stringify(body));
+
+  const res = await fetch(APPS_SCRIPT_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8" },
+    body: params.toString()
+  });
     // lectura opcional (según deploy puede no devolver JSON)
     try{ const j = await res.json(); if(!j?.ok) console.warn("Sheets sin OK"); }catch(_){}
-  }catch(e){ console.warn("No se pudo guardar en Sheets:", e); }
+}catch(e){
+  console.warn("No se pudo guardar en Sheets:", e);
+}
 
   putLocal(id, data);
   setLast(id);
