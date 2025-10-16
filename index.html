@@ -35,11 +35,11 @@
 <!-- JsBarcode para generar el código de barras -->
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
 <!-- html5-qrcode para escanear con la cámara -->
-<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script src="https://unpkg.com/html5-qrcode@2.3.10/html5-qrcode.min.js"></script>
 </head>
 <body>
   <div class="wrap">
-    <h1>Voucher Regalo – Óptica Cristalv1 </h1>
+    <h1>Voucher Regalo – Óptica Cristal</h1>
     <div class="grid">
       <!-- FORM -->
       <div class="card">
@@ -85,7 +85,7 @@
           <button class="primary" id="btnGuardarImprimir">Guardar & Imprimir</button>
           <button class="ghost" id="btnUltimo">Reimprimir último</button>
           <button id="btnEscanear">Escanear voucher</button>
-          <span class="small">La info se guarda localmente en este dispositivo.</span>
+          <span class="small">Se guarda en Google Sheets y en este dispositivo.</span>
         </div>
         <div id="msg" class="small" style="margin-top:8px"></div>
       </div>
@@ -112,21 +112,21 @@
 
 <script>
 /* ====== CONFIG ====== */
-const VOUCHER_IMG = "img/giftcard.jpg";  // Cambiar ruta si tu archivo se llama distinto
-const PRINT_W_MM = 150;   // 15 cm ancho
-const PRINT_H_MM = 100;   // 10 cm alto
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzSb4rNdp1I83DGgPxP0EGjKCkTlAvAj0DnhtRC67ii5-79HY990hAWfew7XhJ7ZTcT/exec";   // ← pegá aquí la URL del despliegue
+const VOUCHER_IMG     = "img/giftcard.jpg"; // ← cambiá si tu archivo se llama distinto
+const PRINT_W_MM = 150;  // 15 cm
+const PRINT_H_MM = 100;  // 10 cm
 
-/* ====== STORAGE (local first) ====== */
+/* ====== STORAGE local (copia cache) ====== */
 function loadDB(){ try{ return JSON.parse(localStorage.getItem("oc_vouchers")||"{}"); }catch(e){ return {}; } }
 function saveDB(db){ localStorage.setItem("oc_vouchers", JSON.stringify(db)); }
-function putVoucher(id, data){ const db = loadDB(); db[id]=data; saveDB(db); }
-function getVoucher(id){ return loadDB()[id]; }
+function putLocal(id, data){ const db = loadDB(); db[id]=data; saveDB(db); }
+function getLocal(id){ return loadDB()[id]; }
 function setLast(id){ localStorage.setItem("oc_last_voucher", id); }
 function getLast(){ return localStorage.getItem("oc_last_voucher"); }
 
-/* ====== ID corto, sin guiones (mejor lectura) ====== */
+/* ====== ID corto, sin guiones ====== */
 function newId(){
-  // OC + base36 del timestamp + 4 aleatorios => ~12-14 chars, todo mayúsculas
   const d = Date.now().toString(36).toUpperCase();
   const r = Math.random().toString(36).slice(2,6).toUpperCase();
   return ("OC" + d + r).slice(0,14);
@@ -136,33 +136,29 @@ function newId(){
 function makeBarcodeSVG(id, options={}){
   const svg = document.createElementNS("http://www.w3.org/2000/svg","svg");
   svg.setAttribute("xmlns","http://www.w3.org/2000/svg");
-  const w = options.w || 1200;  // ancho del lienzo
-  const h = options.h || 220;   // alto del lienzo
+  const w = options.w || 1200, h = options.h || 220;
   svg.setAttribute("width", w); svg.setAttribute("height", h);
   JsBarcode(svg, id, {
     format:"CODE128",
     displayValue:false,
-    margin:0,       // sin margen interno (el quiet zone lo da el padding de la caja)
-    width: 2.4,     // barras más gruesas (2.0–2.6 según pistolita)
+    margin:0,
+    width: 2.4,      // barras más gruesas (ajustá 2.0–2.6 según lector)
     height:h*0.78,
     lineColor:"#000"
   });
   return svg;
 }
 
-/* ====== PRINT (iframe oculto, tamaño exacto en mm) ====== */
+/* ====== PRINT (iframe con IMG) ====== */
 function printVoucher({id}){
   return new Promise((resolve)=>{
-    // 1) URL ABSOLUTA de la imagen (funciona en iframe)
     const IMG_URL = new URL(VOUCHER_IMG, window.location.href).href;
 
-    // 2) Crear iframe oculto
     const iframe = document.createElement("iframe");
     iframe.style.position="fixed"; iframe.style.right="0"; iframe.style.bottom="0";
     iframe.style.width="0"; iframe.style.height="0"; iframe.style.border="0";
     document.body.appendChild(iframe);
 
-    // 3) Documento del iframe con IMG + caja del código (arriba-derecha)
     const doc = iframe.contentDocument;
     doc.open();
     doc.write(`<!DOCTYPE html>
@@ -175,58 +171,46 @@ function printVoucher({id}){
   html,body{ height:100%; margin:0; }
   .sheet{
     position:relative; overflow:hidden;
-    width:${PRINT_W_MM}mm; height:${PRINT_H_MM}mm;
-    background:#fff;
+    width:${PRINT_W_MM}mm; height:${PRINT_H_MM}mm; background:#fff;
   }
-  /* Imagen como <img> para que SIEMPRE se imprima */
-  .bg{
-    position:absolute; inset:0;
-    width:100%; height:100%; object-fit:cover;
-  }
-  /* Caja blanca para el código */
+  .bg{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
   .barcodeWrap{
     position:absolute; top:6mm; right:6mm;
     width:72mm; height:26mm;
     background:#fff; border-radius:1.5mm;
     display:flex; align-items:center; justify-content:center;
-    padding:3.5mm;           /* quiet zone */
-    box-shadow:0 0 0 0.6mm #fff;
+    padding:3.5mm; box-shadow:0 0 0 0.6mm #fff;
   }
   svg{ width:100%; height:100%; }
 </style>
 </head>
 <body>
   <div class="sheet">
-    <img id="bg" class="bg" src="${IMG_URL}" alt="Voucher">
+    <img id="bg" class="bg" src="${IMG_URL}" alt="Voucher" />
     <div class="barcodeWrap" id="barea"></div>
   </div>
 </body>
 </html>`);
     doc.close();
 
-    // 4) Inyectar el SVG del código
+    // Inyectar el SVG del código
     const svg = makeBarcodeSVG(id, {w:1200, h:220});
     doc.getElementById("barea").appendChild(svg);
 
-    // 5) Esperar a que la IMAGEN cargue en el iframe y recién ahí imprimir
+    // Imprimir cuando cargue la imagen
     const bg = doc.getElementById("bg");
     const doPrint = () => {
-      // pequeña espera para layout
       setTimeout(()=>{
         iframe.contentWindow.focus();
         iframe.contentWindow.print();
         setTimeout(()=>{ iframe.remove(); resolve(); }, 500);
       }, 200);
     };
-    if (bg.complete) doPrint();
-    else {
-      bg.onload = doPrint;
-      bg.onerror = doPrint; // si falla igual imprimimos (saldrá sin imagen)
-    }
+    if (bg.complete) doPrint(); else { bg.onload = doPrint; bg.onerror = doPrint; }
   });
 }
 
-/* ====== FORM HANDLERS ====== */
+/* ====== FORM ====== */
 const $ = (id)=>document.getElementById(id);
 const msg = (t, cls="")=>{ const el=$("msg"); el.textContent=t; el.className="small "+cls; }
 
@@ -237,28 +221,25 @@ $("btnGuardarImprimir").addEventListener("click", async ()=>{
   const pago     = $("pago").value.trim();
   const fecha    = $("fecha").value;
   const obs      = $("obs").value.trim();
-
   if(!nombre || !apellido || !pago || !fecha){
     msg("Completá nombre, apellido, forma de pago y fecha.", "warn"); return;
   }
   const id = newId();
   const data = { id, ts:Date.now(), nombre, apellido, importe, pago, fecha, obs };
 
-  // 1) Guardar local
-  putVoucher(id, data);
-  setLast(id);
-
-  // 2) (Opcional) Guardar también en tu Apps Script (descomentá y poné tu URL)
-  /*
-  const APPS_SCRIPT_URL = "https://script.google.com/macros/s/TU_SCRIPT/exec";
+  // Guardar en Google Sheets
   try{
-    await fetch(APPS_SCRIPT_URL, {
+    const r = await fetch(APPS_SCRIPT_URL, {
       method:"POST",
       headers:{ "Content-Type":"application/json" },
       body: JSON.stringify({ action:"saveVoucher", payload:data })
     });
-  }catch(e){ console.warn("Apps Script no disponible:", e); }
-  */
+    if(!r.ok) throw new Error("HTTP "+r.status);
+  }catch(e){ console.warn("No se pudo guardar en Sheets:", e); }
+
+  // Cache local para consulta inmediata
+  putLocal(id, data);
+  setLast(id);
 
   msg(`Guardado ✓  Código: ${id}`, "ok");
   await printVoucher({id});
@@ -271,13 +252,9 @@ $("btnUltimo").addEventListener("click", ()=>{
 });
 
 /* ====== BUSCAR MANUAL ====== */
-$("btnBuscar").addEventListener("click", ()=>{
-  const code = $("manualCode").value.trim();
-  if(!code){ return; }
-  showData(code);
-});
+$("btnBuscar").addEventListener("click", ()=>{ const code = $("manualCode").value.trim(); if(code) showData(code); });
 
-/* ====== ESCANEO CON CÁMARA ====== */
+/* ====== ESCANEO ====== */
 let camOn = false, qr;
 async function toggleCam(){
   if(camOn){
@@ -286,68 +263,66 @@ async function toggleCam(){
     $("btnToggleCam").textContent="Activar cámara";
     return;
   }
-  // Preparar área
   $("scanArea").innerHTML = '<div id="reader" style="width:100%; height:100%"></div>';
   qr = new Html5Qrcode("reader");
   camOn=true; $("btnToggleCam").textContent="Apagar cámara";
-
-  const onScan = (decodedText)=>{
-    if(decodedText){ showData(decodedText); }
-  };
+  const onScan = (decodedText)=>{ if(decodedText){ showData(decodedText); } };
   const config = { fps: 10, qrbox: { width: 250, height: 150 }, formatsToSupport: [ Html5QrcodeSupportedFormats.CODE_128 ] };
-  try{
-    await qr.start({ facingMode: "environment" }, config, onScan);
-  }catch(e){
-    $("scanArea").innerHTML = '<span class="muted">No se pudo iniciar la cámara.</span>';
-    camOn=false; $("btnToggleCam").textContent="Activar cámara";
-  }
+  try{ await qr.start({ facingMode: "environment" }, config, onScan); }
+  catch(e){ $("scanArea").innerHTML = '<span class="muted">No se pudo iniciar la cámara.</span>'; camOn=false; $("btnToggleCam").textContent="Activar cámara"; }
 }
 $("btnEscanear").addEventListener("click", toggleCam);
 $("btnToggleCam").addEventListener("click", toggleCam);
 
 /* ====== MOSTRAR DATOS ====== */
 function fmtMoney(n){ return new Intl.NumberFormat("es-AR",{style:"currency",currency:"ARS",minimumFractionDigits:2}).format(n||0); }
-function showData(id){
+async function showData(id){
   // 1) Local
-  let data = getVoucher(id);
+  let data = getLocal(id);
 
-  // 2) (Opcional) Pedir a Apps Script si no está local
-  /*
+  // 2) Si no está local, buscar en Sheets
   if(!data){
-    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/TU_SCRIPT/exec";
-    fetch(`${APPS_SCRIPT_URL}?action=getVoucher&id=${encodeURIComponent(id)}`)
-      .then(r=>r.ok?r.json():null)
-      .then(json=>{
-        if(json && json.ok){ renderData(json.data); }
-        else renderNotFound(id);
-      })
-      .catch(()=>renderNotFound(id));
-    return;
+    try{
+      const url = new URL(APPS_SCRIPT_URL);
+      url.searchParams.set('action','getVoucher');
+      url.searchParams.set('id', id);
+      const r = await fetch(url.toString());
+      const j = await r.json();
+      if(j?.ok && j.data){
+        data = {
+          id: j.data.id,
+          fecha: j.data.fecha,
+          nombre: j.data.nombre,
+          apellido: j.data.apellido,
+          importe: j.data.importe,
+          pago: j.data.pago,
+          obs: j.data.obs,
+          ts: new Date(j.data.guardado).getTime()
+        };
+        // cachear
+        putLocal(data.id, data);
+      }
+    }catch(_){}
   }
-  */
 
-  if(data){ renderData(data); }
-  else { renderNotFound(id); }
+  if(data) renderData(data); else renderNotFound(id);
 }
-
 function renderData(d){
-  const el = $("info");
-  el.style.display="block";
+  const el = $("info"); el.style.display="block";
   el.innerHTML =
 `Código: <span class="code">${d.id}</span>
 Fecha compra: ${d.fecha}
-Cliente: ${d.apellido.toUpperCase()}, ${d.nombre.toUpperCase()}
+Cliente: ${String(d.apellido||'').toUpperCase()}, ${String(d.nombre||'').toUpperCase()}
 Importe: ${fmtMoney(d.importe)}
 Forma de pago: ${d.pago}
 Obs: ${d.obs || "-"}
-Guardado: ${new Date(d.ts).toLocaleString("es-AR")}`;
+Guardado: ${new Date(d.ts || Date.now()).toLocaleString("es-AR")}`;
   msg(`Encontrado ${d.id}`, "ok");
 }
 function renderNotFound(id){
-  const el = $("info");
-  el.style.display="block";
+  const el = $("info"); el.style.display="block";
   el.innerHTML = `No se encontró info para el código: <span class="code">${id}</span>`;
-  msg("Sin resultados en este dispositivo.", "err");
+  msg("Sin resultados.", "err");
 }
 
 /* ====== UX ====== */
