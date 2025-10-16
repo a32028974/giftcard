@@ -112,7 +112,7 @@
 
 <script>
 /* ====== CONFIG ====== */
-const VOUCHER_IMG = "img/giftcard.jpg";  // Cambiar ruta si querés
+const VOUCHER_IMG = "img/giftcard.jpg";  // Cambiar ruta si tu archivo se llama distinto
 const PRINT_W_MM = 150;   // 15 cm ancho
 const PRINT_H_MM = 100;   // 10 cm alto
 
@@ -124,28 +124,28 @@ function getVoucher(id){ return loadDB()[id]; }
 function setLast(id){ localStorage.setItem("oc_last_voucher", id); }
 function getLast(){ return localStorage.getItem("oc_last_voucher"); }
 
-/* ====== ID ====== */
-function pad(n){return n<10?"0"+n:n}
+/* ====== ID corto, sin guiones (mejor lectura) ====== */
 function newId(){
-  const d=new Date();
-  const id = `OCV-${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}-${d.getHours()}${pad(d.getMinutes())}${d.getSeconds()}-${Math.random().toString(36).slice(2,7).toUpperCase()}`;
-  return id;
+  // OC + base36 del timestamp + 4 aleatorios => ~12-14 chars, todo mayúsculas
+  const d = Date.now().toString(36).toUpperCase();
+  const r = Math.random().toString(36).slice(2,6).toUpperCase();
+  return ("OC" + d + r).slice(0,14);
 }
 
 /* ====== BARCODE SVG ====== */
 function makeBarcodeSVG(id, options={}){
   const svg = document.createElementNS("http://www.w3.org/2000/svg","svg");
   svg.setAttribute("xmlns","http://www.w3.org/2000/svg");
-  // tamaño “horizontal” antes de rotar
-  const w = options.w || 1200;   // px
-  const h = options.h || 220;    // px
+  const w = options.w || 1200;  // ancho del lienzo
+  const h = options.h || 220;   // alto del lienzo
   svg.setAttribute("width", w); svg.setAttribute("height", h);
   JsBarcode(svg, id, {
     format:"CODE128",
     displayValue:false,
-    margin:0,
-    lineColor:"#000",
-    height:h*0.78
+    margin:0,       // sin margen interno (el quiet zone lo da el padding de la caja)
+    width: 2.4,     // barras más gruesas (2.0–2.6 según pistolita)
+    height:h*0.78,
+    lineColor:"#000"
   });
   return svg;
 }
@@ -173,24 +173,24 @@ function printVoucher({id}){
     position:relative; overflow:hidden;
     background: #fff url('${VOUCHER_IMG}') no-repeat center center / cover;
   }
+  /* Caja blanca del código: arriba-derecha, con quiet zone (padding) */
   .barcodeWrap{
-    position:absolute; right:6mm; top:50%;
-    transform: translateY(-50%) rotate(90deg); /* vertical en el costado derecho */
-    transform-origin:center;
-    width:60mm; height:18mm; /* tamaño del código (antes de rotar) */
+    position:absolute; top:6mm; right:6mm;
+    width:72mm; height:26mm;          /* caja visible del código */
+    background:#fff; border-radius:1.5mm;
     display:flex; align-items:center; justify-content:center;
-    background:transparent;
+    padding:3.5mm;                     /* quiet zone */
+    box-shadow:0 0 0 0.6mm #fff;       /* borde blanco notorio (opcional) */
   }
   svg{ width:100%; height:100%; }
+  @media print{ .noprint{ display:none !important; } }
 </style>
 </head>
 <body>
   <div class="sheet">
     <div class="barcodeWrap" id="barea"></div>
   </div>
-  <script>
-    // Esta parte se completa desde el padre
-  <\/script>
+  <script>/* inyectado desde el padre */<\/script>
 </body>
 </html>`);
     doc.close();
@@ -230,9 +230,9 @@ $("btnGuardarImprimir").addEventListener("click", async ()=>{
   putVoucher(id, data);
   setLast(id);
 
-  // 2) (Opcional) Guardar también en tu Apps Script (descomentar y poner URL)
+  // 2) (Opcional) Guardar también en tu Apps Script (descomentá y poné tu URL)
   /*
-  const APPS_SCRIPT_URL = "https://script.google.com/macros/s/XXXXXXXX/exec";
+  const APPS_SCRIPT_URL = "https://script.google.com/macros/s/TU_SCRIPT/exec";
   try{
     await fetch(APPS_SCRIPT_URL, {
       method:"POST",
@@ -296,7 +296,7 @@ function showData(id){
   // 2) (Opcional) Pedir a Apps Script si no está local
   /*
   if(!data){
-    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/XXXXXXXX/exec";
+    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/TU_SCRIPT/exec";
     fetch(`${APPS_SCRIPT_URL}?action=getVoucher&id=${encodeURIComponent(id)}`)
       .then(r=>r.ok?r.json():null)
       .then(json=>{
