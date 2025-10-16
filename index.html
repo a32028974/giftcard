@@ -39,7 +39,7 @@
 </head>
 <body>
   <div class="wrap">
-    <h1>Voucher Regalo – Óptica Cristal</h1>
+    <h1>Voucher Regalo – Óptica Cristalv1 </h1>
     <div class="grid">
       <!-- FORM -->
       <div class="card">
@@ -153,11 +153,16 @@ function makeBarcodeSVG(id, options={}){
 /* ====== PRINT (iframe oculto, tamaño exacto en mm) ====== */
 function printVoucher({id}){
   return new Promise((resolve)=>{
+    // 1) URL ABSOLUTA de la imagen (funciona en iframe)
+    const IMG_URL = new URL(VOUCHER_IMG, window.location.href).href;
+
+    // 2) Crear iframe oculto
     const iframe = document.createElement("iframe");
     iframe.style.position="fixed"; iframe.style.right="0"; iframe.style.bottom="0";
     iframe.style.width="0"; iframe.style.height="0"; iframe.style.border="0";
     document.body.appendChild(iframe);
 
+    // 3) Documento del iframe con IMG + caja del código (arriba-derecha)
     const doc = iframe.contentDocument;
     doc.open();
     doc.write(`<!DOCTYPE html>
@@ -169,42 +174,55 @@ function printVoucher({id}){
   @page{ size: ${PRINT_W_MM}mm ${PRINT_H_MM}mm; margin:0; }
   html,body{ height:100%; margin:0; }
   .sheet{
-    width:${PRINT_W_MM}mm; height:${PRINT_H_MM}mm;
     position:relative; overflow:hidden;
-    background: #fff url('${VOUCHER_IMG}') no-repeat center center / cover;
+    width:${PRINT_W_MM}mm; height:${PRINT_H_MM}mm;
+    background:#fff;
   }
-  /* Caja blanca del código: arriba-derecha, con quiet zone (padding) */
+  /* Imagen como <img> para que SIEMPRE se imprima */
+  .bg{
+    position:absolute; inset:0;
+    width:100%; height:100%; object-fit:cover;
+  }
+  /* Caja blanca para el código */
   .barcodeWrap{
     position:absolute; top:6mm; right:6mm;
-    width:72mm; height:26mm;          /* caja visible del código */
+    width:72mm; height:26mm;
     background:#fff; border-radius:1.5mm;
     display:flex; align-items:center; justify-content:center;
-    padding:3.5mm;                     /* quiet zone */
-    box-shadow:0 0 0 0.6mm #fff;       /* borde blanco notorio (opcional) */
+    padding:3.5mm;           /* quiet zone */
+    box-shadow:0 0 0 0.6mm #fff;
   }
   svg{ width:100%; height:100%; }
-  @media print{ .noprint{ display:none !important; } }
 </style>
 </head>
 <body>
   <div class="sheet">
+    <img id="bg" class="bg" src="${IMG_URL}" alt="Voucher">
     <div class="barcodeWrap" id="barea"></div>
   </div>
-  <script>/* inyectado desde el padre */<\/script>
 </body>
 </html>`);
     doc.close();
 
-    // Inyectar el SVG del código
+    // 4) Inyectar el SVG del código
     const svg = makeBarcodeSVG(id, {w:1200, h:220});
     doc.getElementById("barea").appendChild(svg);
 
-    // Espera breve y dispara impresión
-    setTimeout(()=>{
-      iframe.contentWindow.focus();
-      iframe.contentWindow.print();
-      setTimeout(()=>{ iframe.remove(); resolve(); }, 400);
-    }, 300);
+    // 5) Esperar a que la IMAGEN cargue en el iframe y recién ahí imprimir
+    const bg = doc.getElementById("bg");
+    const doPrint = () => {
+      // pequeña espera para layout
+      setTimeout(()=>{
+        iframe.contentWindow.focus();
+        iframe.contentWindow.print();
+        setTimeout(()=>{ iframe.remove(); resolve(); }, 500);
+      }, 200);
+    };
+    if (bg.complete) doPrint();
+    else {
+      bg.onload = doPrint;
+      bg.onerror = doPrint; // si falla igual imprimimos (saldrá sin imagen)
+    }
   });
 }
 
