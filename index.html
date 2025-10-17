@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Voucher Regalo • Óptica Cristal</title>
+<style>
+  :root{
+    --bg:#f5f7fb; --card:#ffffff; --text:#0b1220; --muted:#5f6b85; --accent:#1f68ff;
+    --ok:#059669; --warn:#b7791f; --err:#dc2626; --border:#e4e8f1; --shadow:0 8px 28px rgba(15,23,42,.06)
+  }
+  *{box-sizing:border-box}
+  body{margin:0; font:15px/1.45 system-ui,Segoe UI,Roboto,Arial,sans-serif; background:var(--bg); color:var(--text)}
+  .wrap{max-width:980px; margin:24px auto; padding:16px}
+  .grid{display:grid; grid-template-columns: 1fr 1fr; gap:16px}
+  .card{background:var(--card); border:1px solid var(--border); border-radius:14px; padding:16px; box-shadow:var(--shadow)}
+  h1{margin:0 0 10px; font-size:22px}
+  label{display:block; font-weight:600; margin:8px 0 4px}
+  input, select{
+    width:100%; padding:10px 12px; border:1px solid var(--border); border-radius:10px;
+    background:#fff; color:var(--text)
+  }
+  input[readonly]{background:#f2f4f8}
+  .row{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+  button{
+    cursor:pointer; padding:10px 14px; border-radius:10px; border:1px solid var(--border);
+    background:#fff; color:#0b1220; transition:.15s
+  }
+  button.primary{background:var(--accent); border-color:var(--accent); color:#fff; font-weight:700}
+  button.ghost{background:#fff}
+  button:disabled{opacity:.6; cursor:not-allowed}
+  .btns{display:flex; gap:10px; flex-wrap:wrap; margin-top:12px}
+  .small{font-size:13px; color:var(--muted)}
+  .ok{color:var(--ok)} .warn{color:var(--warn)} .err{color:var(--err)}
+  .result{white-space:pre-wrap; background:#fff; border:1px solid var(--border); border-radius:10px; padding:10px; margin-top:10px}
+  .scanbox{aspect-ratio: 1.6/1; border:1px dashed #cfd6e6; border-radius:12px; display:grid; place-items:center; color:#7c8bb0; background:#fafbfe}
+  .muted{color:var(--muted)}
+  .flex{display:flex; align-items:center; gap:10px}
+  .code{font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; background:#eef2ff; border:1px solid #dbe2ff; padding:2px 6px; border-radius:6px}
+  .tabs{display:flex; gap:10px; margin:10px 0 14px}
+  .tabbtn{padding:8px 12px; border-radius:10px; border:1px solid var(--border); background:#fff}
+  .tabbtn.active{background:var(--accent); color:#fff; border-color:var(--accent); font-weight:700}
+  .hidden{display:none}
+  @media (max-width:900px){ .grid{grid-template-columns:1fr} }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+<script src="https://unpkg.com/html5-qrcode@2.3.10/html5-qrcode.min.js"></script>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Voucher Regalo – Óptica Cristal v6</h1>
+
+    <!-- TABS -->
+    <div class="tabs">
+      <button class="tabbtn active" id="tab-assign">Vender / Asignar</button>
+      <button class="tabbtn" id="tab-batch">Imprimir lote</button>
+    </div>
+
+    <!-- ===================== ASIGNAR ===================== -->
+    <div id="view-assign">
+      <div class="grid">
+        <!-- FORM -->
+        <div class="card">
+          <div class="row">
+            <div>
+              <label>Código (escaneá o pegá)</label>
+              <input id="codigo" placeholder="OC..." autocomplete="off" />
+            </div>
+            <div>
+              <label>Fecha (automática)</label>
+              <input id="fecha" type="date" readonly />
+            </div>
+          </div>
+
+          <div class="row">
+            <div>
+              <label>Importe (ARS)</label>
+              <input id="importe" type="number" step="0.01" min="0" placeholder="0.00" />
+            </div>
+            <div>
+              <label>Forma de pago</label>
+              <select id="pago">
+                <option value="">Elegí opción</option>
+                <option>Efectivo</option>
+                <option>Débito</option>
+                <option>Crédito 1 cuota</option>
+                <option>Crédito 3 cuotas</option>
+                <option>Transferencia</option>
+                <option>Otra</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="row">
+            <div>
+              <label>Nombre</label>
+              <input id="nombre" autocomplete="off" />
+            </div>
+            <div>
+              <label>Apellido</label>
+              <input id="apellido" autocomplete="off" />
+            </div>
+          </div>
+
+          <div class="row">
+            <div>
+              <label>Vendedor</label>
+              <input id="vendedor" autocomplete="off" placeholder="ej. Rodri / Jimena / Juan" />
+            </div>
+            <div>
+              <label>Observación (opcional)</label>
+              <input id="obs" placeholder="ej. solo armazón / promo / etc." />
+            </div>
+          </div>
+
+          <div class="btns">
+            <button class="primary" id="btnAsignar">Asignar & Guardar</button>
+            <button class="ghost" id="btnImprimirAsignada">Imprimir tarjeta</button>
+            <button id="btnEscanear">Escanear código</button>
+            <span class="small">La fecha se guarda siempre con el momento de la asignación.</span>
+          </div>
+          <div id="msg" class="small" style="margin-top:8px"></div>
+        </div>
+
+        <!-- SCAN / RESULT -->
+        <div class="card">
+          <div class="flex" style="justify-content:space-between">
+            <div class="flex">
+              <strong>Consulta por código</strong>
+              <input id="manualCode" placeholder="pegar/teclear código" style="width:220px" />
+              <button id="btnBuscar">Buscar</button>
+            </div>
+            <div>
+              <button id="btnToggleCam">Activar cámara</button>
+            </div>
+          </div>
+          <div id="scanArea" class="scanbox" style="margin-top:10px">
+            <span class="muted">Cámara apagada</span>
+          </div>
+          <div id="info" class="result" style="display:none"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===================== LOTE ===================== -->
+    <div id="view-batch" class="hidden">
+      <div class="card">
+        <div class="row">
+          <div>
+            <label>Cantidad de tarjetas</label>
+            <select id="cant">
+              <option>5</option><option selected>10</option><option>15</option><option>20</option><option>30</option>
+            </select>
+          </div>
+          <div>
+            <label>Prefijo (opcional)</label>
+            <input id="prefijo" placeholder="OC" />
+          </div>
+        </div>
+        <div class="btns">
+          <button class="primary" id="btnImprimirLote">Imprimir lote</button>
+          <span class="small">Imprime tarjetas en blanco con códigos únicos (no guarda en Sheets).</span>
+        </div>
+        <div id="loteMsg" class="small" style="margin-top:8px"></div>
+      </div>
+    </div>
+  </div>
+
+<script>
+/* ====== CONFIG ====== */
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx47dayEhtFmx3WFT6-mZffcoMV5F6zCsKM1QtbdFWYj2SuHgyk53Kl0YchJFhn9ZcA/exec";
+const VOUCHER_IMG     = "img/giftcard.jpg";
+const PRINT_W_MM = 150, PRINT_H_MM = 100;
+
+/* ====== Tabs ====== */
+const viewAssign = document.getElementById('view-assign');
+const viewBatch  = document.getElementById('view-batch');
+const tabAssign  = document.getElementById('tab-assign');
+const tabBatch   = document.getElementById('tab-batch');
+function activateTab(which){
+  const isAssign = which==='assign';
+  tabAssign.classList.toggle('active', isAssign);
+  tabBatch .classList.toggle('active', !isAssign);
+  viewAssign.classList.toggle('hidden', !isAssign);
+  viewBatch .classList.toggle('hidden', isAssign);
+}
+tabAssign.onclick = ()=>activateTab('assign');
+tabBatch .onclick = ()=>activateTab('batch');
+
+/* ====== Fecha automática (hoy, zona AR) ====== */
+function todayYMD(){
+  const tz = 'America/Argentina/Buenos_Aires';
+  const now = new Date();
+  // Normalizamos a zona local para yyyy-mm-dd
+  const y = now.getFullYear();
+  const m = String(now.getMonth()+1).padStart(2,'0');
+  const d = String(now.getDate()).padStart(2,'0');
+  return `${y}-${m}-${d}`;
+}
+document.getElementById('fecha').value = todayYMD();
+
+/* ====== CACHE local ====== */
+function loadDB(){ try{ return JSON.parse(localStorage.getItem("oc_vouchers")||"{}"); }catch(e){ return {}; } }
+function saveDB(db){ localStorage.setItem("oc_vouchers", JSON.stringify(db)); }
+function putLocal(id, data){ const db = loadDB(); db[id]=data; saveDB(db); }
+function getLocal(id){ return loadDB()[id]; }
+
+/* ====== IDs lote ====== */
+function genCode(prefix="OC"){
+  const y = new Date();
+  const d = y.toISOString().slice(2,10).replace(/-/g,''); // yy-mm-dd -> yymmdd
+  const r = Math.random().toString(36).slice(2,7).toUpperCase();
+  return `${prefix}${d}-${r}`;
+}
+
+/* ====== BARCODE ====== */
+function makeBarcodeSVG(id, options={}){
+  const svg = document.createElementNS("http://www.w3.org/2000/svg","svg");
+  svg.setAttribute("xmlns","http://www.w3.org/2000/svg");
+  const w = options.w || 900, h = options.h || 200;
+  svg.setAttribute("width", w); svg.setAttribute("height", h);
+  JsBarcode(svg, id, { format:"CODE128", displayValue:false, margin:0, width: 2.0, height:h*0.78, lineColor:"#000" });
+  return svg;
+}
+
+/* ====== Plantillas impresión ====== */
+function openPrintDoc(){
+  const iframe = document.createElement("iframe");
+  iframe.style.position="fixed"; iframe.style.right="0"; iframe.style.bottom="0";
+  iframe.style.width="0"; iframe.style.height="0"; iframe.style.border="0";
+  document.body.appendChild(iframe);
+  const doc = iframe.contentDocument;
+  doc.open();
+  doc.write(`<!DOCTYPE html><html><head><meta charset="utf-8" />
+<style>
+  @page{ size: ${PRINT_W_MM}mm ${PRINT_H_MM}mm; margin:0; }
+  html,body{ height:100%; margin:0; }
+  .sheet{ position:relative; overflow:hidden; width:${PRINT_W_MM}mm; height:${PRINT_H_MM}mm; background:#fff; page-break-after:always; }
+  .sheet:last-child{ page-break-after:auto; }
+  .bg{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+  .barcodeWrap{ position:absolute; top:6mm; right:6mm; width:56mm; height:22mm; background:#fff; border-radius:2mm; display:flex; align-items:center; justify-content:center; padding:3mm; box-shadow:0 0 0 0.6mm #fff; }
+  .codeTxt{ position:absolute; right:6mm; top:30mm; font:10pt ui-monospace,monospace; color:#000; background:#fff; padding:1mm 2mm; border-radius:2mm; }
+  svg{ width:100%; height:100%; }
+</style></head><body></body></html>`);
+  doc.close();
+  return {iframe, doc};
+}
+function printOneCardTo(doc, id){
+  const page = doc.createElement('div');
+  page.className = 'sheet';
+  page.innerHTML = `
+    <img class="bg" src="${new URL(VOUCHER_IMG, window.location.href).href}" alt="Voucher" />
+    <div class="barcodeWrap"></div>
+    <div class="codeTxt">${id}</div>`;
+  page.querySelector('.barcodeWrap').appendChild(makeBarcodeSVG(id,{w:1200,h:220}));
+  doc.body.appendChild(page);
+}
+function finalizePrint(iframe){ setTimeout(()=>{ iframe.contentWindow.focus(); iframe.contentWindow.print(); setTimeout(()=>iframe.remove(), 500); }, 300); }
+
+/* ====== Lote ====== */
+document.getElementById('btnImprimirLote').addEventListener('click', ()=>{
+  const n = parseInt(document.getElementById('cant').value, 10) || 10;
+  const pref = (document.getElementById('prefijo').value || 'OC').toUpperCase().replace(/\s+/g,'');
+  const {iframe, doc} = openPrintDoc();
+  const ids = [];
+  for(let i=0;i<n;i++){ const id = genCode(pref); ids.push(id); printOneCardTo(doc, id); }
+  const ts = Date.now();
+  ids.forEach(id => putLocal(id, { id, ts, importe: 0, disponible: true }));
+  document.getElementById('loteMsg').textContent = `Listo: se imprimieron ${n} tarjetas.`;
+  finalizePrint(iframe);
+});
+
+/* ====== Mensajes ====== */
+const $ = (id)=>document.getElementById(id);
+const msg = (t, cls="")=>{ const el=$("msg"); el.textContent=t; el.className="small "+cls; };
+
+/* ====== Impresión unidad (asignada o en blanco) ====== */
+document.getElementById('btnImprimirAsignada').addEventListener('click', ()=>{
+  const id = $("codigo").value.trim();
+  if(!id){ return msg('Indicá un código para imprimir.', 'warn'); }
+  const {iframe, doc} = openPrintDoc();
+  printOneCardTo(doc, id);
+  finalizePrint(iframe);
+});
+
+/* ====== Consulta / Escaneo ====== */
+$("btnBuscar").addEventListener("click", ()=>{ const code = $("manualCode").value.trim(); if(code){ $("codigo").value = code; showData(code); } });
+
+let camOn = false, qr;
+async function toggleCam(){
+  if(camOn){ await qr?.stop(); qr?.clear(); camOn=false; $("scanArea").innerHTML = '<span class="muted">Cámara apagada</span>'; $("btnToggleCam").textContent="Activar cámara"; return; }
+  $("scanArea").innerHTML = '<div id="reader" style="width:100%; height:100%"></div>';
+  qr = new Html5Qrcode("reader"); camOn=true; $("btnToggleCam").textContent="Apagar cámara";
+  const onScan = (txt)=>{ if(txt){ $("codigo").value = txt; showData(txt); } };
+  const config = { fps:10, qrbox:{ width:250, height:150 }, formatsToSupport:[ Html5QrcodeSupportedFormats.CODE_128 ] };
+  try{ await qr.start({ facingMode:"environment" }, config, onScan); }
+  catch(e){ $("scanArea").innerHTML = '<span class="muted">No se pudo iniciar la cámara.</span>'; camOn=false; $("btnToggleCam").textContent="Activar cámara"; }
+}
+$("btnEscanear").addEventListener("click", toggleCam);
+$("btnToggleCam").addEventListener("click", toggleCam);
+
+/* ====== Mostrar datos ====== */
+function fmtMoney(n){ return new Intl.NumberFormat("es-AR",{style:"currency",currency:"ARS",minimumFractionDigits:2}).format(n||0); }
+function renderNotFound(id){
+  const el = $("info"); el.style.display="block";
+  el.innerHTML = `No hay registro en Sheets para: <span class="code">${id}</span>\nEstado: DISPONIBLE (no asignado)`;
+  msg("Código libre para asignar.", "ok");
+  $("btnAsignar").disabled = false;
+}
+function renderData(d){
+  const el = $("info"); el.style.display="block";
+  const estado = d.asignado ? "ASIGNADO" : "DISPONIBLE";
+  el.innerHTML =
+`Código: <span class="code">${d.id}</span>
+Estado: ${estado}
+Fecha compra: ${d.fecha || "-"}
+Cliente: ${d.apellido ? (d.apellido.toUpperCase()+", "+(d.nombre||"").toUpperCase()) : "-"}
+Importe: ${fmtMoney(d.importe)}
+Forma de pago: ${d.pago || "-"}
+Vendedor: ${d.vendedor || "-"}
+Obs: ${d.obs || "-"}
+Guardado: ${d.ts ? new Date(d.ts).toLocaleString("es-AR") : "-"}`;
+  msg(estado==="ASIGNADO" ? `Encontrado ${d.id}` : `Código disponible: ${d.id}`, estado==="ASIGNADO"?"ok":"warn");
+  $("btnAsignar").disabled = (estado==="ASIGNADO"); // <- bloqueo en UI
+}
+
+/* ====== Buscar local + Sheets ====== */
+async function fetchInfo(id){
+  let data = getLocal(id);
+  if(data && data.importe>0){ return { asignado:true, ...data }; }
+
+  try{
+    const url = new URL(APPS_SCRIPT_URL);
+    url.searchParams.set('action','getVoucher'); url.searchParams.set('id', id);
+    const r = await fetch(url.toString()); const j = await r.json();
+    if(j?.ok && j.data){
+      data = {
+        id: j.data.id, fecha: j.data.fecha, nombre: j.data.nombre, apellido: j.data.apellido,
+        importe: Number(j.data.importe || 0), pago: j.data.pago, vendedor: j.data.vendedor,
+        obs: j.data.obs, ts: new Date(j.data.guardado).getTime(), asignado: Number(j.data.importe || 0) > 0
+      };
+      putLocal(data.id, data); return data;
+    }
+  }catch(_){}
+  return null;
+}
+async function showData(id){ const d = await fetchInfo(id); if(d) renderData(d); else renderNotFound(id); }
+
+/* ====== Asignar & Guardar (con fecha auto y veto si ya tiene importe) ====== */
+document.getElementById('btnAsignar').addEventListener('click', async ()=>{
+  const id       = $("codigo").value.trim();
+  const fecha    = todayYMD(); // siempre hoy
+  const importe  = Number($("importe").value || 0);
+  const pago     = $("pago").value.trim();
+  const nombre   = $("nombre").value.trim();
+  const apellido = $("apellido").value.trim();
+  const vendedor = $("vendedor").value.trim();
+  const obs      = $("obs").value.trim();
+
+  if(!id){ return msg("Escaneá o ingresá un código.", "warn"); }
+  if(!pago || !nombre || !apellido || !importe){ return msg("Completá importe, forma de pago, nombre y apellido.", "warn"); }
+
+  // Chequeo duro en cliente
+  const ya = await fetchInfo(id);
+  if(ya?.asignado){ $("btnAsignar").disabled = true; return msg("Ese código ya está ASIGNADO. No se puede volver a cargar importe.", "err"); }
+
+  try{
+    const body = { action:"saveVoucher", payload:{ id, fecha, nombre, apellido, importe, pago, vendedor, obs, ts: Date.now() } };
+    const params = new URLSearchParams(); params.set('data', JSON.stringify(body));
+    const res = await fetch(APPS_SCRIPT_URL, { method:"POST", headers:{ "Content-Type":"application/x-www-form-urlencoded;charset=UTF-8" }, body: params.toString() });
+    // Intento leer respuesta util
+    let ok = true;
+    try{ const j = await res.json(); ok = !!j?.ok; if(j?.reason==='already_assigned'){ $("btnAsignar").disabled=true; return msg("Servidor: código ya asignado. Operación cancelada.", "err"); } }catch(_){}
+    putLocal(id, { id, fecha, nombre, apellido, importe, pago, vendedor, obs, ts: Date.now(), asignado:true });
+    $("btnAsignar").disabled = true;
+    msg(ok ? "Guardado y asignado correctamente." : "Guardado localmente (sin confirmar server).", ok ? "ok" : "warn");
+    showData(id);
+  }catch(e){
+    console.warn(e);
+    msg("No se pudo guardar en Sheets (se guardó localmente).", "warn");
+    putLocal(id, { id, fecha, nombre, apellido, importe, pago, vendedor, obs, ts: Date.now(), asignado:true });
+    $("btnAsignar").disabled = true;
+    showData(id);
+  }
+});
+
+/* ====== UX ====== */
+document.addEventListener("keydown", (e)=>{
+  if(e.key==="Enter" && (document.activeElement.id==="manualCode")) $("btnBuscar").click();
+});
+</script>
+</body>
+</html>
