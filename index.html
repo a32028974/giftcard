@@ -1,378 +1,234 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Voucher Regalo • Óptica Cristal (QR)</title>
-
-<!-- SweetAlert2 -->
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<!-- QR generator -->
-<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
-<!-- JsBarcode (solo por si querés comparar, no se usa ya) -->
-<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
-<!-- Lector (por si escaneás códigos de barras legacy) -->
-<script src="https://unpkg.com/html5-qrcode@2.3.10/html5-qrcode.min.js"></script>
-
-<style>
-  :root{
-    --bg:#f5f7fb; --card:#ffffff; --text:#0b1220; --muted:#5f6b85; --accent:#1f68ff;
-    --ok:#059669; --warn:#b7791f; --err:#dc2626; --border:#e4e8f1; --shadow:0 8px 28px rgba(15,23,42,.06)
-  }
-  *{box-sizing:border-box}
-  body{margin:0; font:15px/1.45 system-ui,Segoe UI,Roboto,Arial,sans-serif; background:var(--bg); color:var(--text)}
-  .wrap{max-width:980px; margin:24px auto; padding:16px}
-  .grid{display:grid; grid-template-columns: 1fr 1fr; gap:16px}
-  .card{background:var(--card); border:1px solid var(--border); border-radius:14px; padding:16px; box-shadow:var(--shadow)}
-  h1{margin:0 0 10px; font-size:22px}
-  label{display:block; font-weight:600; margin:8px 0 4px}
-  input, select{width:100%; padding:10px 12px; border:1px solid var(--border); border-radius:10px; background:#fff; color:var(--text)}
-  input[readonly]{background:#f2f4f8}
-  .row{display:grid; grid-template-columns:1fr 1fr; gap:12px}
-  button{cursor:pointer; padding:10px 14px; border-radius:10px; border:1px solid var(--border); background:#fff; color:#0b1220}
-  button.primary{background:var(--accent); border-color:var(--accent); color:#fff; font-weight:700}
-  button:disabled{opacity:.6; cursor:not-allowed}
-  .btns{display:flex; gap:10px; flex-wrap:wrap; margin-top:12px}
-  .small{font-size:13px; color:var(--muted)}
-  .result{white-space:pre-wrap; background:#fff; border:1px solid var(--border); border-radius:10px; padding:10px; margin-top:10px}
-  .scanbox{aspect-ratio:1.6/1; border:1px dashed #cfd6e6; border-radius:12px; display:grid; place-items:center; color:#7c8bb0; background:#fafbfe}
-  .muted{color:var(--muted)}
-  .flex{display:flex; align-items:center; gap:10px}
-  .code{font-family:ui-monospace,Menlo,Consolas,monospace; background:#eef2ff; border:1px solid #dbe2ff; padding:2px 6px; border-radius:6px}
-  .tabs{display:flex; gap:10px; margin:10px 0 14px}
-  .tabbtn{padding:8px 12px; border-radius:10px; border:1px solid var(--border); background:#fff}
-  .tabbtn.active{background:var(--accent); color:#fff; border-color:var(--accent); font-weight:700}
-  .hidden{display:none}
-  @media (max-width:900px){ .grid{grid-template-columns:1fr} }
-</style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Voucher Regalo – Óptica Cristal (QR)</title>
+  <link rel="icon" href="logo.png" />
+  <style>
+    :root{
+      --bg:#f6f7fb; --card:#fff; --text:#0f172a; --muted:#6b7280; --line:#e5e7eb; --brand:#2563eb;
+    }
+    *{box-sizing:border-box}
+    body{margin:0; font-family:system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Arial, "Apple Color Emoji","Segoe UI Emoji"; background:var(--bg); color:var(--text)}
+    .wrap{max-width:980px; margin:24px auto; padding:0 16px}
+    h1{font-weight:700; font-size:22px; margin:0}
+    .muted{color:var(--muted)}
+    .row{display:flex; align-items:center; gap:12px; flex-wrap:wrap}
+    .btn{display:inline-flex; align-items:center; gap:8px; padding:10px 14px; border:1px solid var(--line); border-radius:10px; background:#111827; color:#fff; cursor:pointer; font-weight:600}
+    .btn.secondary{background:#fff; color:#111827}
+    .btn:disabled{opacity:.6; cursor:not-allowed}
+    .card{background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px; margin-top:16px}
+    .field{display:grid; gap:6px; min-width:220px}
+    label{font-size:14px; color:#111827; font-weight:600}
+    input, select{height:40px; padding:8px 10px; border:1px solid var(--line); border-radius:8px; font-size:15px; background:#fff}
+    .hint{font-size:13px; color:var(--muted)}
+    .grid{display:grid; grid-template-columns:repeat( auto-fill, minmax(220px, 1fr) ); gap:14px}
+    /* Vista previa de tarjetas */
+    .cards{display:grid; grid-template-columns:repeat(auto-fill, minmax(240px, 1fr)); gap:16px; margin-top:16px}
+    .card-voucher{border:1px dashed #d1d5db; border-radius:12px; padding:12px; background:#fff}
+    .card-voucher h3{margin:0 0 8px; font-size:16px}
+    .code{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size:14px; letter-spacing:.3px; color:#111827}
+    .qr{display:flex; align-items:center; justify-content:center; width:160px; height:160px; margin:8px auto; border:1px solid #e5e7eb; border-radius:8px; overflow:hidden; background:#fff}
+    .bar{margin-top:16px; height:1px; background:linear-gradient(90deg,#e5e7eb 33%, transparent 0) 0/10px 1px repeat-x}
+    .topbar{display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:14px}
+    .pill{background:#eef2ff; color:#3730a3; padding:6px 10px; border-radius:999px; font-size:12px; font-weight:700}
+    .actions{display:flex; gap:10px; flex-wrap:wrap}
+    @media print {
+      body{background:#fff}
+      .no-print{display:none !important}
+      .cards{grid-template-columns:repeat(2, 1fr)} /* 2 por fila al imprimir */
+      .card{border:0}
+      .card-voucher{border:1px solid #000}
+    }
+  </style>
 </head>
 <body>
   <div class="wrap">
-    <h1>Voucher Regalo – Óptica Cristal (QR)</h1>
-
-    <div class="tabs">
-      <button class="tabbtn active" id="tab-assign">Vender / Asignar</button>
-      <button class="tabbtn" id="tab-batch">Imprimir lote</button>
+    <div class="topbar">
+      <div>
+        <h1> v1 Voucher Regalo – Óptica Cristal (QR)</h1>
+        <div class="muted">Imprime tarjetas que apuntan a un “viewer” (App Script) donde se verá el regalo.</div>
+      </div>
+      <div class="actions no-print">
+        <button class="btn secondary" id="btnAsignar">Vender / Asignar</button>
+        <button class="btn" id="btnImprimirLote">Imprimir lote</button>
+      </div>
     </div>
 
-    <!-- ===== ASIGNAR ===== -->
-    <div id="view-assign">
+    <div class="card no-print">
       <div class="grid">
-        <div class="card">
-          <div class="row">
-            <div>
-              <label>Código (escaneá o pegá)</label>
-              <input id="codigo" placeholder="OC..." autocomplete="off" />
-            </div>
-            <div>
-              <label>Fecha (automática)</label>
-              <input id="fecha" type="date" readonly />
-            </div>
-          </div>
-
-          <div class="row">
-            <div>
-              <label>Importe (ARS)</label>
-              <input id="importe" type="number" step="0.01" min="0" placeholder="0.00" />
-            </div>
-            <div>
-              <label>Forma de pago</label>
-              <select id="pago">
-                <option value="">Elegí opción</option>
-                <option>Efectivo</option><option>Débito</option>
-                <option>Crédito 1 cuota</option><option>Crédito 3 cuotas</option>
-                <option>Transferencia</option><option>Otra</option>
-              </select>
-            </div>
-          </div>
-
-          <div class="row">
-            <div>
-              <label>Regalo de (quien compra)</label>
-              <input id="de" placeholder="Nombre y apellido de quien compra" />
-            </div>
-            <div>
-              <label>Para (destinatario)</label>
-              <input id="para" placeholder="Nombre de quien recibe" />
-            </div>
-          </div>
-
-          <div class="row">
-            <div>
-              <label>Vendedor</label>
-              <input id="vendedor" placeholder="ej. Rodri / Jimena / Juan" />
-            </div>
-            <div>
-              <label>Observación (opcional)</label>
-              <input id="obs" placeholder="ej. día de la madre / promo" />
-            </div>
-          </div>
-
-          <div class="btns">
-            <button class="primary" id="btnAsignar">Asignar & Guardar</button>
-            <button id="btnImprimirAsignada">Imprimir tarjeta</button>
-            <button id="btnEscanear">Escanear código</button>
-          </div>
-          <div id="msg" class="small" style="margin-top:8px"></div>
+        <div class="field">
+          <label for="cantidad">Cantidad de tarjetas</label>
+          <select id="cantidad">
+            <option>1</option><option>2</option><option>3</option><option>4</option><option selected>5</option>
+            <option>10</option><option>20</option><option>30</option><option>50</option>
+          </select>
         </div>
-
-        <div class="card">
-          <div class="flex" style="justify-content:space-between">
-            <div class="flex">
-              <strong>Consulta por código</strong>
-              <input id="manualCode" placeholder="pegar/teclear código" style="width:220px" />
-              <button id="btnBuscar">Buscar</button>
-            </div>
-            <div><button id="btnToggleCam">Activar cámara</button></div>
-          </div>
-          <div id="scanArea" class="scanbox" style="margin-top:10px"><span class="muted">Cámara apagada</span></div>
-          <div id="info" class="result" style="display:none"></div>
+        <div class="field">
+          <label for="prefijo">Prefijo (opcional)</label>
+          <input id="prefijo" placeholder="OC" value="OC" />
         </div>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <button class="btn" id="btnGenerar">Generar vista previa</button>
+        <div class="hint">Imprime tarjetas en blanco (QR al viewer del código).</div>
       </div>
     </div>
 
-    <!-- ===== LOTE ===== -->
-    <div id="view-batch" class="hidden">
-      <div class="card">
-        <div class="row">
-          <div>
-            <label>Cantidad de tarjetas</label>
-            <select id="cant"><option>5</option><option selected>10</option><option>15</option><option>20</option><option>30</option></select>
-          </div>
-          <div>
-            <label>Prefijo (opcional)</label>
-            <input id="prefijo" placeholder="OC" />
-          </div>
-        </div>
-        <div class="btns">
-          <button class="primary" id="btnImprimirLote">Imprimir lote</button>
-          <span class="small">Imprime tarjetas en blanco (QR al viewer del código).</span>
-        </div>
-        <div id="loteMsg" class="small" style="margin-top:8px"></div>
-      </div>
-    </div>
+    <div id="preview" class="cards"></div>
   </div>
 
-<script>
-/* ===== CONFIG ===== */
-const APPS_SCRIPT_URL = "REEMPLAZA_CON_TU_URL";
-const VOUCHER_IMG     = "img/giftcard.jpg";       // fondo de la tarjeta
-const PRINT_W_MM = 150, PRINT_H_MM = 100;
+  <!-- QRCode.js (min) vía CDN. Si preferís, podés bajar el archivo y hostearlo local. -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" integrity="sha512-6ZsJkz0rZlNw3t+5o4W7c1gX8mOe1mGvJH3k2tXbW7JQqYVfZ9n0TgK1qj8WmCw2rYz9u3Qx7Eo8Gz5x3GkG3g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
-/* ===== Helpers UI / fechas ===== */
-const $ = (id)=>document.getElementById(id);
-const msg = (t, cls="")=>{ const el=$("msg"); el.textContent=t; el.className="small "+(cls||""); };
-function todayYMD(){ const n=new Date(); return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-${String(n.getDate()).padStart(2,'0')}`;}
-$("fecha").value = todayYMD();
-function fmtMoney(n){ return new Intl.NumberFormat("es-AR",{style:"currency",currency:"ARS"}).format(+n||0); }
+  <script>
+    // ====== CONFIG ======
+    // URL del viewer (tu App Script que muestra el giftcard). Puse la que compartiste en el chat.
+    // Si cambia, editá SOLAMENTE esta línea y listo.
+    const VIEW_URL = 'https://script.google.com/macros/s/AKfycbyKV3I_UeCAP_YiMEvcSdBliqVvMgPr1zqRrsNflmy_oCd2nCKywyuEUjpb4mDucrRJ/exec';
 
-/* ===== Tabs ===== */
-(function(){
-  const viewAssign = $('view-assign'), viewBatch = $('view-batch');
-  const tabAssign = $('tab-assign'), tabBatch = $('tab-batch');
-  const activate = (a)=>{ tabAssign.classList.toggle('active',a); tabBatch.classList.toggle('active',!a); viewAssign.classList.toggle('hidden',!a); viewBatch.classList.toggle('hidden',a); };
-  tabAssign.onclick=()=>activate(true); tabBatch.onclick=()=>activate(false);
-})();
+    // ====== Helpers ======
+    const $ = (sel) => document.querySelector(sel);
+    const el = (tag, attrs = {}, children = []) => {
+      const n = document.createElement(tag);
+      for (const [k,v] of Object.entries(attrs)) {
+        if (k === 'class') n.className = v;
+        else if (k === 'text') n.textContent = v;
+        else n.setAttribute(k, v);
+      }
+      for (const c of [].concat(children)) n.appendChild(c);
+      return n;
+    };
 
-/* ===== Local cache ===== */
-function loadDB(){ try{ return JSON.parse(localStorage.getItem("oc_vouchers")||"{}"); }catch(e){ return {}; } }
-function saveDB(db){ localStorage.setItem("oc_vouchers", JSON.stringify(db)); }
-function putLocal(id, data){ const db=loadDB(); db[id]=Object.assign(db[id]||{}, data); saveDB(db); }
-function getLocal(id){ return loadDB()[id]; }
-
-/* ===== API ===== */
-async function apiGet(params){ const url = new URL(APPS_SCRIPT_URL); Object.entries(params||{}).forEach(([k,v])=>url.searchParams.set(k,v)); const r=await fetch(url); return r.json().catch(()=>null); }
-async function apiPost(body){ const p=new URLSearchParams(); p.set('data', JSON.stringify(body||{})); const r=await fetch(APPS_SCRIPT_URL,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},body:p}); return r.json().catch(()=>null); }
-
-/* ===== Construir PNG con texto (canvas) ===== */
-async function buildVoucherPNG({id, fondoSrc, de, para, importe}){
-  const fondo = await new Promise((ok,err)=>{ const img=new Image(); img.crossOrigin='anonymous'; img.onload=()=>ok(img); img.onerror=err; img.src = new URL(fondoSrc, location.href).href; });
-  // tamaño grande para que se vea nítido en celulares
-  const W = 1500, H = 1000; // 15x10 cm aprox @ 254 dpi
-  const c=document.createElement('canvas'); c.width=W; c.height=H; const ctx=c.getContext('2d');
-  ctx.drawImage(fondo,0,0,W,H);
-  // Caja de texto
-  ctx.fillStyle='rgba(255,255,255,0.86)'; ctx.fillRect(40, 640, W-80, 280);
-  ctx.fillStyle='#0b1220'; ctx.font='bold 44px system-ui,Segoe UI,Arial'; ctx.fillText(`Regalo de: ${de||'-'}`, 60, 710);
-  ctx.font='bold 50px system-ui,Segoe UI,Arial'; ctx.fillText(`Para: ${para||'-'}`, 60, 770);
-  ctx.font='bold 54px system-ui,Segoe UI,Arial'; ctx.fillText(`Importe disponible: ${fmtMoney(importe)}`, 60, 840);
-  ctx.font='24px ui-monospace,monospace'; ctx.fillText(`Código: ${id}`, 60, 905);
-  // devolvemos dataURL
-  return c.toDataURL('image/png');
-}
-
-/* ===== Subir PNG al Drive y guardar link en planilla ===== */
-async function uploadVoucherImageAndAttach({id, dataURL}){
-  const res = await apiPost({ action:'uploadImage', payload:{ id, imageData:dataURL }});
-  if(res?.ok){
-    putLocal(id, { link: res.link, fileId: res.fileId });
-    // fijamos link en la fila por si no lo hizo (ig igual lo hace en el server)
-    await apiPost({ action:'setImageLink', payload:{ id, link:res.link, fileId:res.fileId }});
-  }
-  return res;
-}
-
-/* ===== QR helpers ===== */
-function viewURLFor(id){ // QR estable por código
-  const u = new URL(APPS_SCRIPT_URL);
-  u.searchParams.set('action','view'); u.searchParams.set('id', id);
-  return u.toString();
-}
-async function makeQRDataURL(text){ return await QRCode.toDataURL(text, { width: 512, margin: 1 }); }
-
-/* ===== Impresión (con QR) ===== */
-function openPrintDoc(){
-  const iframe = document.createElement("iframe");
-  Object.assign(iframe.style,{position:"fixed",right:0,bottom:0,width:"0",height:"0",border:"0"}); document.body.appendChild(iframe);
-  const doc = iframe.contentDocument; doc.open(); doc.write(`<!DOCTYPE html><html><head><meta charset="utf-8" />
-<style>
- @page{ size:${PRINT_W_MM}mm ${PRINT_H_MM}mm; margin:0; }
- html,body{ height:100%; margin:0; }
- .sheet{ position:relative; overflow:hidden; width:${PRINT_W_MM}mm; height:${PRINT_H_MM}mm; background:#fff; }
- .bg{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
- .qr{ position:absolute; top:6mm; right:6mm; width:26mm; height:26mm; background:#fff; border-radius:2mm; padding:1.5mm; box-shadow:0 0 0 0.6mm #fff; }
- .code{ position:absolute; right:6mm; top:34mm; font:10pt ui-monospace,monospace; color:#000; background:#fff; padding:1mm 2mm; border-radius:2mm; }
-</style></head><body></body></html>`); doc.close();
-  return {iframe, doc};
-}
-async function printOneCardQR({id}){
-  const {iframe, doc} = openPrintDoc();
-  const page = doc.createElement('div'); page.className='sheet';
-  page.innerHTML = `<img class="bg" src="${new URL(VOUCHER_IMG, location.href).href}" alt="Voucher"/><img class="qr" id="qr"/><div class="code">${id}</div>`;
-  doc.body.appendChild(page);
-  const qrData = await makeQRDataURL(viewURLFor(id));
-  page.querySelector('#qr').src = qrData;
-  setTimeout(()=>{ iframe.contentWindow.print(); setTimeout(()=>iframe.remove(), 300); }, 400);
-}
-
-/* ===== SweetAlert Detalle grande + botón USADO ===== */
-async function showVoucherModal(d){
-  const html = `
-    <div style="text-align:left; font-size:1.15rem; line-height:1.5">
-      <div><b>Código:</b> <span style="font-family:ui-monospace">${d.id}</span></div>
-      <div><b>Estado:</b> ${d.estado}</div>
-      <div><b>Regalo de:</b> ${d.de||"-"}</div>
-      <div><b>Para:</b> ${d.para||"-"}</div>
-      <div><b>Importe:</b> ${fmtMoney(d.importe||0)}</div>
-      <div><b>Forma de pago:</b> ${d.pago||"-"}</div>
-      <div><b>Vendedor:</b> ${d.vendedor||"-"}</div>
-      <div><b>Obs:</b> ${d.obs||"-"}</div>
-      ${d.link ? `<div style="margin-top:8px"><a href="${d.link}" target="_blank">Abrir imagen en Drive</a></div>` : ""}
-    </div>`;
-  const canUse = d.estado==="ASIGNADO";
-  const result = await Swal.fire({
-    title: 'Detalle de voucher',
-    html, width: 720, allowOutsideClick:false, allowEscapeKey:false,
-    showCancelButton: canUse, cancelButtonText:'Marcar como USADO', confirmButtonText:'Aceptar'
-  });
-  if (result.dismiss === Swal.DismissReason.cancel) {
-    await markUsed(d.id, true); await showById(d.id);
-  }
-}
-
-/* ===== Buscar/mostrar ===== */
-async function fetchInfo(id){
-  let d = getLocal(id);
-  if(!d){
-    const j = await apiGet({ action:'getVoucher', id });
-    if(j?.ok && j.data){
-      d = {
-        id:j.data.id, fecha:j.data.fecha, importe:+(j.data.importe||0), pago:j.data.pago,
-        obs:j.data.obs, vendedor:j.data.vendedor, estado:j.data.estado||((+j.data.importe>0)?'ASIGNADO':'DISPONIBLE'),
-        usado_fecha:j.data.usado_fecha||"", de:j.data.regalo_de||"", para:j.data.para||"",
-        link:j.data.link||"", fileId:j.data.fileId||""
-      };
-      putLocal(id, d);
+    function todayStr() {
+      const d = new Date();
+      const pad = (n) => String(n).padStart(2,'0');
+      return `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}`;
     }
-  }
-  return d||null;
-}
-function renderNotFound(id){
-  const el=$("info"); el.style.display="block";
-  el.innerHTML = `No hay registro en Sheets para: <span class="code">${id}</span>\nEstado: DISPONIBLE (no asignado)`;
-  $("btnAsignar").disabled = false;
-}
-function renderData(d){
-  const el=$("info"); el.style.display="block";
-  el.innerHTML =
-`Código: <span class="code">${d.id}</span>
-Estado: ${d.estado}
-Regalo de: ${d.de||"-"}
-Para: ${d.para||"-"}
-Importe: ${fmtMoney(d.importe)}
-Forma de pago: ${d.pago||"-"}
-Vendedor: ${d.vendedor||"-"}
-Obs: ${d.obs||"-"}
-${d.link ? ("Link: "+d.link) : ""}`;
-  $("btnAsignar").disabled = (d.estado==="ASIGNADO" || d.estado==="USADO");
-  showVoucherModal(d);
-}
-async function showById(id){ const d = await fetchInfo(id); if(d) renderData(d); else renderNotFound(id); }
 
-/* ===== Escaneo / búsqueda ===== */
-$("btnBuscar").onclick = ()=>{ const v=$("manualCode").value.trim(); if(v){ $("codigo").value=v; showById(v); } };
-let camOn=false, qr;
-$("btnToggleCam").onclick = async ()=>{
-  if(camOn){ await qr?.stop(); qr?.clear(); camOn=false; $("scanArea").innerHTML='<span class="muted">Cámara apagada</span>'; $("btnToggleCam").textContent='Activar cámara'; return; }
-  $("scanArea").innerHTML='<div id="reader" style="width:100%; height:100%"></div>'; qr=new Html5Qrcode("reader"); camOn=true; $("btnToggleCam").textContent='Apagar cámara';
-  try{ await qr.start({facingMode:"environment"}, {fps:10, qrbox:{width:250,height:150}}, (t)=>{ $("codigo").value=t; showById(t); }); }
-  catch(e){ $("scanArea").innerHTML='<span class="muted">No se pudo iniciar la cámara.</span>'; camOn=false; $("btnToggleCam").textContent='Activar cámara'; }
-};
+    function randomChunk(len=6) {
+      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // sin 0/1/O/I
+      let out = '';
+      for (let i=0;i<len;i++) out += chars[Math.floor(Math.random()*chars.length)];
+      return out;
+    }
 
-/* ===== Asignar ===== */
-$("btnAsignar").onclick = async ()=>{
-  const id = $("codigo").value.trim();
-  const importe = +($("importe").value||0);
-  const pago = $("pago").value.trim();
-  const de = $("de").value.trim();
-  const para = $("para").value.trim();
-  const vendedor = $("vendedor").value.trim();
-  const obs = $("obs").value.trim();
+    function assertConfig() {
+      const base = (VIEW_URL || '').trim();
+      if (!base) throw new Error('Config: VIEW_URL vacío o no definido.');
+      // validamos que sea absoluta o relativa resolvible
+      try { new URL(base); } catch { new URL(base, window.location.href); }
+    }
 
-  if(!id) return msg("Escaneá o ingresá un código.","err");
-  if(!pago || !de || !para || !importe) return msg("Completá importe, forma de pago, 'Regalo de' y 'Para'.","err");
+    // Construye de forma robusta la URL destino del QR
+    function viewURLFor(code) {
+      const base = (VIEW_URL || '').trim();
+      if (!base) throw new Error('Config: VIEW_URL vacío o no definido');
 
-  const ya = await fetchInfo(id);
-  if(ya && (ya.estado==="ASIGNADO" || ya.estado==="USADO")){ $("btnAsignar").disabled=true; return msg("Ese código ya está asignado/USADO.","err"); }
+      let u;
+      try {
+        // si es absoluta, entra acá
+        u = new URL(base);
+      } catch {
+        // si es relativa (p.ej. "/viewer"), la resuelvo contra la URL actual
+        u = new URL(base, window.location.href);
+      }
+      u.searchParams.set('code', (code || '').toString().trim());
+      return u.toString();
+    }
 
-  // 1) Guardar en Sheets
-  const res = await apiPost({ action:"saveVoucher", payload:{ id, importe, pago, nombre:de, apellido:"", vendedor, obs, regalo_de:de, para }});
-  if(!(res?.ok)){ if(res?.reason==="already_assigned"){ $("btnAsignar").disabled=true; } return msg("No se pudo guardar en Sheets.", "err"); }
+    function buildCodes(n, prefix='OC') {
+      const date = todayStr();
+      const out = [];
+      for (let i=1; i<=n; i++) {
+        const seq = String(i).padStart(3,'0');
+        const chunk = randomChunk(6);
+        const code = [prefix?.trim()||'OC', date, seq, chunk].filter(Boolean).join('-');
+        out.push(code);
+      }
+      return out;
+    }
 
-  // 2) Generar PNG y subir a Drive
-  const dataURL = await buildVoucherPNG({ id, fondoSrc:VOUCHER_IMG, de, para, importe });
-  const up = await uploadVoucherImageAndAttach({ id, dataURL });
+    function makeCard(code) {
+      const card = el('div', {class:'card-voucher'});
+      card.appendChild(el('h3', {text:'Voucher Regalo • Óptica Cristal'}));
+      card.appendChild(el('div', {class:'code', text: code}));
 
-  // 3) Cache y modal
-  putLocal(id, { id, importe, pago, de, para, vendedor, obs, estado:"ASIGNADO", link:up?.link||"", fileId:up?.fileId||"" });
-  $("btnAsignar").disabled = true;
-  msg("Guardado, imagen subida y link asociado.","ok");
-  await showById(id);
-};
+      const qrBox = el('div', {class:'qr'});
+      card.appendChild(qrBox);
 
-/* ===== Marcar USADO ===== */
-async function markUsed(id, used){
-  const j = await apiGet({ action:'markUsed', id, used:String(!!used) });
-  if(j?.ok){
-    putLocal(id, { estado:j.estado, usado_fecha:j.usado_fecha });
-    await Swal.fire({ icon:'success', title:'Actualizado', text:`Voucher ${id} marcado como ${j.estado}.`, confirmButtonText:'OK', allowOutsideClick:false });
-  } else {
-    await Swal.fire({ icon:'error', title:'Error', text:'No se pudo marcar como usado.', confirmButtonText:'OK', allowOutsideClick:false });
-  }
-}
+      // Genero el QR
+      const targetUrl = viewURLFor(code);
+      new QRCode(qrBox, {
+        text: targetUrl,
+        width: 160,
+        height: 160,
+        correctLevel: QRCode.CorrectLevel.M
+      });
 
-/* ===== Imprimir una (QR) ===== */
-$("btnImprimirAsignada").onclick = ()=>{ const id=$("codigo").value.trim(); if(!id) return msg("Indicá un código.","err"); printOneCardQR({id}); };
+      const bar = el('div', {class:'bar'});
+      card.appendChild(bar);
+      const small = el('div', {class:'muted', text:'Escaneá el QR para ver el regalo disponible'});
+      small.style.textAlign = 'center';
+      small.style.marginTop = '8px';
+      card.appendChild(small);
 
-/* ===== Lote (QR al viewer del código) ===== */
-$("btnImprimirLote").onclick = async ()=>{
-  const n = parseInt($("cant").value,10)||10;
-  const pref = ($("prefijo").value||'OC').toUpperCase().replace(/\s+/g,'');
-  const ids = []; for(let i=0;i<n;i++){ const d=new Date(); const r=Math.random().toString(36).slice(2,7).toUpperCase(); ids.push(`${pref}${d.toISOString().slice(2,10).replace(/-/g,'')}-${r}`); }
-  // imprimimos uno por uno para asegurar QR listo
-  for(const id of ids){ await printOneCardQR({id}); }
-  $("loteMsg").textContent = `Listo: se enviaron ${n} tarjetas a impresión.`;
-};
-</script>
+      return card;
+    }
+
+    function renderPreview(codes) {
+      const cont = $('#preview');
+      cont.innerHTML = '';
+      codes.forEach(code => cont.appendChild(makeCard(code)));
+    }
+
+    function printPage() { window.print(); }
+
+    // ====== Eventos ======
+    $('#btnGenerar').addEventListener('click', () => {
+      try {
+        assertConfig();
+        const n = parseInt($('#cantidad').value, 10) || 1;
+        const prefix = $('#prefijo').value || 'OC';
+        const codes = buildCodes(n, prefix);
+        renderPreview(codes);
+      } catch (e) {
+        console.error(e);
+        alert(e.message || 'Error al generar la vista previa');
+      }
+    });
+
+    $('#btnImprimirLote').addEventListener('click', () => {
+      try {
+        // si no hay preview, lo genero rápido con los valores actuales
+        if (!$('#preview').children.length) {
+          const n = parseInt($('#cantidad').value, 10) || 1;
+          const prefix = $('#prefijo').value || 'OC';
+          const codes = buildCodes(n, prefix);
+          renderPreview(codes);
+        }
+        assertConfig();
+        printPage();
+      } catch (e) {
+        console.error(e);
+        alert(e.message || 'No se pudo imprimir');
+      }
+    });
+
+    $('#btnAsignar').addEventListener('click', () => {
+      alert('Pantalla de “Vender / Asignar” pendiente (usa el mismo VIEW_URL para resolver por código).');
+    });
+
+    // Genero una vista previa inicial como en tu screenshot
+    window.addEventListener('DOMContentLoaded', () => {
+      try {
+        const codes = buildCodes(5, 'OC');
+        renderPreview(codes);
+      } catch (e) {
+        console.warn('Preview inicial omitida:', e.message);
+      }
+    });
+  </script>
 </body>
 </html>
