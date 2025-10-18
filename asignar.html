@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Asignar Gift Card</title>
+<style>
+  *{box-sizing:border-box}
+  body{margin:0; font-family:system-ui,Segoe UI,Roboto,Arial; background:#f6f7fb}
+  main{max-width:760px; margin:24px auto; background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:16px}
+  h1{margin:0 0 12px}
+  .grid{display:grid; grid-template-columns: repeat(auto-fit,minmax(220px,1fr)); gap:12px}
+  label{font-size:14px; font-weight:600}
+  input{width:100%; height:40px; padding:8px 10px; border:1px solid #d1d5db; border-radius:8px; font-size:15px; background:#fff}
+  .row{display:flex; gap:10px; margin-top:14px}
+  .btn{padding:10px 14px; border:1px solid #d1d5db; border-radius:10px; background:#111827; color:#fff; font-weight:700; cursor:pointer}
+  .btn.secondary{background:#fff; color:#111827}
+  .msg{margin-top:12px}
+</style>
+</head>
+<body>
+  <main>
+    <h1>Asignar Gift Card</h1>
+    <p>Ingresá el código impreso, los datos del regalo y guardá.</p>
+
+    <div class="grid">
+      <div>
+        <label>Código (xxxx-xxxx)</label>
+        <input id="code" placeholder="fuh7-y4j8" maxlength="9" />
+      </div>
+      <div>
+        <label>Quien regala</label>
+        <input id="giver" placeholder="Nombre de quien regala" />
+      </div>
+      <div>
+        <label>Beneficiario</label>
+        <input id="recipient" placeholder="Nombre del beneficiario" />
+      </div>
+      <div>
+        <label>Importe</label>
+        <input id="amount" type="number" step="0.01" min="0" placeholder="0.00" />
+      </div>
+      <div>
+        <label>Fecha de compra</label>
+        <input id="date" type="date" />
+      </div>
+    </div>
+
+    <div class="row">
+      <button class="btn" id="save">Guardar asignación</button>
+      <button class="btn secondary" id="view">Ver como lo verá el destinatario</button>
+    </div>
+    <div id="msg" class="msg"></div>
+  </main>
+
+<script>
+  // ====== MISMA URL DEL APP SCRIPT ======
+  const APP_URL = 'PASTE_YOUR_WEB_APP_URL_HERE'; // ej.: https://script.google.com/macros/s/XXXX/exec
+
+  const $ = (id)=>document.getElementById(id);
+  const normCode = v => (v||'').toLowerCase().replace(/[^a-z0-9]/g,'').replace(/(.{4})(?=.)/g,'$1-');
+
+  // set default date today
+  window.addEventListener('DOMContentLoaded', ()=>{
+    const d=new Date(); const p=n=>String(n).padStart(2,'0');
+    $('date').value = `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`;
+  });
+
+  $('save').onclick = async ()=>{
+    try{
+      const code = normCode($('code').value);
+      if(!/^[a-z0-9]{4}-[a-z0-9]{4}$/.test(code)) throw new Error('Código inválido (formato xxxx-xxxx)');
+      const giver = $('giver').value.trim();
+      const recipient = $('recipient').value.trim();
+      const amount = parseFloat($('amount').value);
+      const date = $('date').value;
+      if(!giver || !recipient || !date || isNaN(amount)) throw new Error('Completá todos los campos');
+
+      const body = new URLSearchParams({ action:'assign', code, giver, recipient, amount:amount.toFixed(2), date });
+      const res = await fetch(APP_URL, { method:'POST', body });
+      const data = await res.json();
+
+      if(!res.ok || !data?.ok) throw new Error(data?.error||'No se pudo guardar');
+      $('msg').textContent = 'Asignado OK. (Guardado en la hoja)';
+    }catch(e){
+      $('msg').textContent = e.message;
+    }
+  };
+
+  $('view').onclick = ()=>{
+    const code = normCode($('code').value);
+    if(!/^[a-z0-9]{4}-[a-z0-9]{4}$/.test(code)) return $('msg').textContent='Ingresá un código válido';
+    const u = new URL(APP_URL); u.searchParams.set('action','view'); u.searchParams.set('code',code);
+    window.open(u.toString(), '_blank');
+  };
+</script>
+</body>
+</html>
